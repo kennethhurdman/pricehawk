@@ -123,7 +123,6 @@ Supabase (Auth + DB)       Google Gemini API
 - ✅ Watchlist dashboard with item management
 - ✅ HawkBot AI conversational search assistant
 - ✅ AI-generated deal alert emails
-- ✅ Automated background price monitoring (cron)
 - ✅ Free/Pro user tier system
 - ⬜ Browser extension for one-click item tracking
 - ⬜ Mobile push notifications
