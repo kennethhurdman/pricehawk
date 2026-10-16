@@ -133,5 +133,5 @@ Supabase (Auth + DB)       Google Gemini API
 
 ## 👥 Authors & Collaborators
 
-- **Lead Engineer:** Kenneth ([@your-github-handle]([https://github.com/your-github-handle](https://github.com/kennethhurdman)))
+- **Lead Engineer:** Kenneth ([@kennethhurdman](https://github.com/kennethhurdman))
 - **Supervisor / Reviewer:** Alan ([@alanoutrank](https://github.com/alanoutrank))
