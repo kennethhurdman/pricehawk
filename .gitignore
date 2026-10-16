@@ -1,0 +1,11 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+# Google Cloud service account credentials — never commit these
+*-9f33227e8666.json
+peerless-text-*.json
