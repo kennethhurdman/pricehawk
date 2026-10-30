@@ -7,7 +7,7 @@ import { Category, ChatMessage, MockCatalogItem } from '../types';
 import {
   Search, Plus, Trash2, Crosshair, TrendingDown, ArrowRight, X,
   AlertCircle, Zap, Heart, Send, Bot, Sparkles, LayoutGrid, MessageSquare, Bird,
-  Compass, Link as LinkIcon, Filter, User, Pencil, ArrowUpDown, Download, RefreshCw
+  Compass, Link as LinkIcon, Filter, User, Pencil, ArrowUpDown, RefreshCw, Share2, Check
 } from 'lucide-react';
 import { formatCurrency, cn } from '../lib/utils';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -497,35 +497,50 @@ export const Dashboard = () => {
     return filtered.sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0));
   }, [trackedItems, targetsFilter]);
 
-  // ── Export Watchlist as CSV ─────────────────────────────────────────────
-  const handleExportCSV = () => {
-    if (trackedItems.length === 0) {
-      alert('No tracked items to export.');
-      return;
+  // ── Share Deal & Watchlist State ─────────────────────────────────────────
+  const [copiedDealId, setCopiedDealId] = useState<string | null>(null);
+  const [copiedWatchlist, setCopiedWatchlist] = useState(false);
+  const [shareToast, setShareToast] = useState<string | null>(null);
+
+  const copyToClipboard = async (text: string) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
     }
+  };
 
-    const headers = ['Title', 'Category', 'Current Price', 'Target Price', 'Currency', 'Is Favorite', 'Target URL', 'Tracked Date'];
-    const rows = trackedItems.map(item => [
-      `"${(item.title || '').replace(/"/g, '""')}"`,
-      `"${item.category || ''}"`,
-      item.current_price,
-      item.target_price,
-      `"${item.currency || 'PHP'}"`,
-      item.is_favorite ? 'Yes' : 'No',
-      `"${(item.target_url || '').replace(/"/g, '""')}"`,
-      `"${item.created_at || ''}"`
-    ]);
+  const handleShareDeal = async (item: typeof trackedItems[0]) => {
+    const text = `🔥 PriceHawk Deal: "${item.title}" is currently ${formatCurrency(item.current_price, item.currency)} (Target: ${formatCurrency(item.target_price, item.currency)})! Check it here: ${item.target_url}`;
+    try {
+      await copyToClipboard(text);
+      setCopiedDealId(item.id);
+      setShareToast(`Copied link for "${item.title.slice(0, 30)}..."!`);
+      setTimeout(() => setCopiedDealId(null), 2500);
+      setTimeout(() => setShareToast(null), 3500);
+    } catch (err) {
+      console.error('Failed to copy', err);
+    }
+  };
 
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `pricehawk-watchlist-${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const handleShareWatchlist = async () => {
+    if (trackedItems.length === 0) return;
+    const summary = trackedItems.map(i => `• ${i.title}: ${formatCurrency(i.current_price, i.currency)}`).join('\n');
+    const text = `🦅 My PriceHawk Watchlist (${trackedItems.length} items):\n${summary}\nTrack with PriceHawk!`;
+    try {
+      await copyToClipboard(text);
+      setCopiedWatchlist(true);
+      setShareToast('Watchlist summary copied to clipboard!');
+      setTimeout(() => setCopiedWatchlist(false), 2500);
+      setTimeout(() => setShareToast(null), 3500);
+    } catch (err) {
+      console.error('Failed to copy', err);
+    }
   };
 
   const TRENDING_DEALS = [
@@ -625,13 +640,22 @@ export const Dashboard = () => {
             <h2 className="text-xl font-display font-bold text-slate-900">Tracked Targets</h2>
             <div className="flex items-center gap-2">
               <button
-                onClick={handleExportCSV}
+                onClick={handleShareWatchlist}
                 disabled={trackedItems.length === 0}
                 className="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 text-slate-700 rounded-lg text-xs font-semibold px-3 py-1.5 transition-colors shadow-2xs"
-                title="Export tracked items to CSV"
+                title="Share your watchlist deals"
               >
-                <Download size={14} className="text-brand-accent" />
-                <span>Export CSV</span>
+                {copiedWatchlist ? (
+                  <>
+                    <Check size={13} className="text-green-600" />
+                    <span className="text-green-600 font-bold">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Share2 size={13} className="text-brand-accent" />
+                    <span>Share List</span>
+                  </>
+                )}
               </button>
               <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
                 <Filter size={13} className="text-slate-400" />
@@ -720,15 +744,26 @@ export const Dashboard = () => {
                         <button 
                           onClick={() => handleRefreshPrice(item.id)} 
                           disabled={refreshingIds[item.id]} 
-                          className="bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50 px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
+                          className="bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50 px-2.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1"
                           title="Verify latest live price"
                         >
                           <RefreshCw size={13} className={cn("text-slate-500", refreshingIds[item.id] && "animate-spin text-brand-accent")} />
                           {refreshingIds[item.id] ? 'Checking' : 'Check'}
                         </button>
-                        <button onClick={() => handleSimulate(item.id)} disabled={simulatingIds[item.id]} className="flex-1 bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50 px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex justify-center items-center gap-1.5">
+                        <button onClick={() => handleSimulate(item.id)} disabled={simulatingIds[item.id]} className="flex-1 bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50 px-2.5 py-2 rounded-lg text-xs font-semibold transition-colors flex justify-center items-center gap-1">
                           {simulatingIds[item.id] ? <div className="w-3.5 h-3.5 border-2 border-slate-400 border-t-brand-accent rounded-full animate-spin" /> : <Zap size={14} className={isHit ? "text-slate-400" : "text-brand-accent"} />}
                           Simulate
+                        </button>
+                        <button
+                          onClick={() => handleShareDeal(item)}
+                          className="bg-slate-100 text-slate-700 hover:bg-slate-200 px-2.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center"
+                          title="Share deal"
+                        >
+                          {copiedDealId === item.id ? (
+                            <Check size={14} className="text-green-600" />
+                          ) : (
+                            <Share2 size={14} className="text-slate-600" />
+                          )}
                         </button>
                         <a href={item.target_url} target="_blank" rel="noreferrer" className="bg-brand-dark text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors flex items-center justify-center" title="View original deal">
                           <ArrowRight size={16} />
@@ -1112,6 +1147,16 @@ export const Dashboard = () => {
             >
               <X size={16} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Share Feedback Toast ── */}
+      {shareToast && (
+        <div className="fixed top-6 right-6 z-50 pointer-events-auto animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className="bg-slate-900 text-white rounded-xl shadow-2xl px-4 py-3 flex items-center gap-2.5 text-xs font-semibold border border-slate-800">
+            <Check size={16} className="text-green-400 shrink-0" />
+            <span>{shareToast}</span>
           </div>
         </div>
       )}
