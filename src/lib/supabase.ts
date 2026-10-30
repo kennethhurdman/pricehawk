@@ -26,7 +26,7 @@ if (!supabaseUrl || !supabaseAnon) {
   );
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnon, {
+export const supabase = createClient(supabaseUrl, supabaseAnon, {
   auth: {
     // Keep the session in localStorage so users stay logged in on refresh
     persistSession: true,

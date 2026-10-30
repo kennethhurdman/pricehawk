@@ -7,7 +7,7 @@ import { Category, ChatMessage, MockCatalogItem } from '../types';
 import {
   Search, Plus, Trash2, Crosshair, TrendingDown, ArrowRight, X,
   AlertCircle, Zap, Heart, Send, Bot, Sparkles, LayoutGrid, MessageSquare, Bird,
-  Compass, Link as LinkIcon, Filter, User
+  Compass, Link as LinkIcon, Filter, User, Pencil
 } from 'lucide-react';
 import { formatCurrency, cn } from '../lib/utils';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -173,9 +173,34 @@ function TypingDots() {
 export const Dashboard = () => {
   const { user, profile }                                               = useAuthContext();
   const { items: trackedItems, addItem, removeItem, toggleFavorite,
-          updateCurrentPrice }                                          = useTrackedItems(user?.id ?? null);
+          updateCurrentPrice, updateTargetPrice }                       = useTrackedItems(user?.id ?? null);
   const { alerts: emails, latestTriggeredAlertId: latestTriggeredEmailId,
           addAlert, markRead: markEmailRead }                           = useAlerts(user?.id ?? null);
+
+  // ── Edit Target Price Modal State ───────────────────────────────────────
+  const [editingItem, setEditingItem] = useState<{ id: string; title: string; target_price: number; currency: string } | null>(null);
+  const [editPriceInput, setEditPriceInput] = useState('');
+  const [isUpdatingTarget, setIsUpdatingTarget] = useState(false);
+
+  const handleUpdateTargetPrice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    const priceNum = parseFloat(editPriceInput);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      alert('Please enter a valid target price greater than 0');
+      return;
+    }
+    setIsUpdatingTarget(true);
+    try {
+      await updateTargetPrice(editingItem.id, priceNum);
+      setEditingItem(null);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update target price');
+    } finally {
+      setIsUpdatingTarget(false);
+    }
+  };
 
   // ── Helper: simulate a price drop (writes to Supabase) ─────────────────
   const simulatePriceCheck = async (itemId: string) => {
@@ -472,9 +497,21 @@ export const Dashboard = () => {
                           <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
                             <Crosshair size={12} className="text-brand-accent" /> Target Price
                           </span>
-                          <span className="font-semibold text-slate-700">
-                            {formatCurrency(item.target_price, item.currency)}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-slate-700">
+                              {formatCurrency(item.target_price, item.currency)}
+                            </span>
+                            <button
+                              onClick={() => {
+                                setEditingItem({ id: item.id, title: item.title, target_price: item.target_price, currency: item.currency });
+                                setEditPriceInput(item.target_price.toString());
+                              }}
+                              className="p-1 text-slate-400 hover:text-brand-accent hover:bg-slate-200/60 rounded transition-colors"
+                              title="Edit Target Price"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -644,6 +681,60 @@ export const Dashboard = () => {
                   </button>
                 </form>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Target Price Modal ── */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white">
+              <h2 className="font-display font-semibold text-lg text-slate-900 flex items-center gap-2">
+                <Pencil size={18} className="text-brand-accent" /> Update Target Price
+              </h2>
+              <button 
+                onClick={() => setEditingItem(null)} 
+                className="p-1 text-slate-400 hover:bg-slate-100 rounded-full"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 bg-slate-50">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Target Item</p>
+              <h4 className="font-medium text-slate-900 text-sm mb-4 line-clamp-2">{editingItem.title}</h4>
+              <form onSubmit={handleUpdateTargetPrice}>
+                <label className="block text-sm font-medium text-slate-700 mb-2">New Target Price</label>
+                <div className="relative mb-6">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">₱</span>
+                  <input
+                    type="number" 
+                    required 
+                    min="1"
+                    value={editPriceInput} 
+                    onChange={e => setEditPriceInput(e.target.value)}
+                    className="w-full pl-8 pr-4 py-3 rounded-xl border border-slate-300 focus:border-brand-accent focus:ring-1 focus:ring-brand-accent outline-none text-lg font-medium bg-white"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button 
+                    type="button" 
+                    onClick={() => setEditingItem(null)} 
+                    className="px-4 py-3 rounded-xl font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={isUpdatingTarget}
+                    className="flex-1 bg-brand-accent hover:bg-brand-accent-hover text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2 py-3 disabled:opacity-50"
+                  >
+                    {isUpdatingTarget ? 'Saving...' : 'Save Target Price'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

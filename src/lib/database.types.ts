@@ -58,17 +58,32 @@ export interface Database {
         Row:    ProfileRow;
         Insert: Omit<ProfileRow, 'created_at'>;
         Update: Partial<Omit<ProfileRow, 'id' | 'created_at'>>;
+        Relationships: [];
       };
       tracked_items: {
         Row:    TrackedItemRow;
         Insert: Omit<TrackedItemRow, 'id' | 'created_at'>;
         Update: Partial<Omit<TrackedItemRow, 'id' | 'user_id' | 'created_at'>>;
+        Relationships: [];
       };
       alerts: {
         Row:    AlertRow;
         Insert: Omit<AlertRow, 'id'>;
         Update: Partial<Pick<AlertRow, 'read'>>;
+        Relationships: [];
       };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
     };
   };
 }

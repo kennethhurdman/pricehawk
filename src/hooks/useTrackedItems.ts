@@ -75,5 +75,11 @@ export function useTrackedItems(userId: string | null) {
     await supabase.from('tracked_items').update({ current_price: newPrice }).eq('id', id);
   };
 
-  return { items, loading, fetchItems, addItem, removeItem, toggleFavorite, updateCurrentPrice };
+  // ── Update target_price (user adjusts notification threshold) ───────────
+  const updateTargetPrice = async (id: string, newTargetPrice: number) => {
+    setItems(prev => prev.map(i => i.id === id ? { ...i, target_price: newTargetPrice } : i));
+    await supabase.from('tracked_items').update({ target_price: newTargetPrice }).eq('id', id);
+  };
+
+  return { items, loading, fetchItems, addItem, removeItem, toggleFavorite, updateCurrentPrice, updateTargetPrice };
 }
