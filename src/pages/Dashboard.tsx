@@ -7,7 +7,7 @@ import { Category, ChatMessage, MockCatalogItem } from '../types';
 import {
   Search, Plus, Trash2, Crosshair, TrendingDown, ArrowRight, X,
   AlertCircle, Zap, Heart, Send, Bot, Sparkles, LayoutGrid, MessageSquare, Bird,
-  Compass, Link as LinkIcon, Filter, User, Pencil, ArrowUpDown, RefreshCw, Share2, Check
+  Compass, Link as LinkIcon, Filter, User, Pencil, ArrowUpDown, RefreshCw, Percent
 } from 'lucide-react';
 import { formatCurrency, cn } from '../lib/utils';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -179,7 +179,7 @@ export const Dashboard = () => {
           addAlert, markRead: markEmailRead }                           = useAlerts(user?.id ?? null);
 
   // ── Edit Target Price Modal State ───────────────────────────────────────
-  const [editingItem, setEditingItem] = useState<{ id: string; title: string; target_price: number; currency: string } | null>(null);
+  const [editingItem, setEditingItem] = useState<{ id: string; title: string; current_price: number; target_price: number; currency: string } | null>(null);
   const [editPriceInput, setEditPriceInput] = useState('');
   const [isUpdatingTarget, setIsUpdatingTarget] = useState(false);
 
@@ -497,52 +497,6 @@ export const Dashboard = () => {
     return filtered.sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0));
   }, [trackedItems, targetsFilter]);
 
-  // ── Share Deal & Watchlist State ─────────────────────────────────────────
-  const [copiedDealId, setCopiedDealId] = useState<string | null>(null);
-  const [copiedWatchlist, setCopiedWatchlist] = useState(false);
-  const [shareToast, setShareToast] = useState<string | null>(null);
-
-  const copyToClipboard = async (text: string) => {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(text);
-    } else {
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-    }
-  };
-
-  const handleShareDeal = async (item: typeof trackedItems[0]) => {
-    const text = `🔥 PriceHawk Deal: "${item.title}" is currently ${formatCurrency(item.current_price, item.currency)} (Target: ${formatCurrency(item.target_price, item.currency)})! Check it here: ${item.target_url}`;
-    try {
-      await copyToClipboard(text);
-      setCopiedDealId(item.id);
-      setShareToast(`Copied link for "${item.title.slice(0, 30)}..."!`);
-      setTimeout(() => setCopiedDealId(null), 2500);
-      setTimeout(() => setShareToast(null), 3500);
-    } catch (err) {
-      console.error('Failed to copy', err);
-    }
-  };
-
-  const handleShareWatchlist = async () => {
-    if (trackedItems.length === 0) return;
-    const summary = trackedItems.map(i => `• ${i.title}: ${formatCurrency(i.current_price, i.currency)}`).join('\n');
-    const text = `🦅 My PriceHawk Watchlist (${trackedItems.length} items):\n${summary}\nTrack with PriceHawk!`;
-    try {
-      await copyToClipboard(text);
-      setCopiedWatchlist(true);
-      setShareToast('Watchlist summary copied to clipboard!');
-      setTimeout(() => setCopiedWatchlist(false), 2500);
-      setTimeout(() => setShareToast(null), 3500);
-    } catch (err) {
-      console.error('Failed to copy', err);
-    }
-  };
-
   const TRENDING_DEALS = [
     { id: 't1', category: 'ECOMMERCE' as Category, name: 'Sony WH-1000XM5', price: 16999, currency: 'PHP', imageUrl: 'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=400&q=80', sourceUrl: 'https://shopee.ph/sony-wh-1000xm5', trackers: 42 },
     { id: 't2', category: 'FLIGHT' as Category, name: 'Manila to Tokyo (RT)', price: 12500, currency: 'PHP', imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&q=80', sourceUrl: 'https://www.google.com/flights?q=mnl+to+nrt', trackers: 89 },
@@ -636,40 +590,20 @@ export const Dashboard = () => {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6">
+          <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-display font-bold text-slate-900">Tracked Targets</h2>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleShareWatchlist}
-                disabled={trackedItems.length === 0}
-                className="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 text-slate-700 rounded-lg text-xs font-semibold px-3 py-1.5 transition-colors shadow-2xs"
-                title="Share your watchlist deals"
+            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+              <Filter size={13} className="text-slate-400" />
+              <select 
+                value={targetsFilter} 
+                onChange={(e) => setTargetsFilter(e.target.value as any)}
+                className="bg-transparent text-slate-700 font-medium outline-none cursor-pointer"
               >
-                {copiedWatchlist ? (
-                  <>
-                    <Check size={13} className="text-green-600" />
-                    <span className="text-green-600 font-bold">Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Share2 size={13} className="text-brand-accent" />
-                    <span>Share List</span>
-                  </>
-                )}
-              </button>
-              <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
-                <Filter size={13} className="text-slate-400" />
-                <select 
-                  value={targetsFilter} 
-                  onChange={(e) => setTargetsFilter(e.target.value as any)}
-                  className="bg-transparent text-slate-700 font-medium outline-none cursor-pointer"
-                >
-                  <option value="ALL">All Categories</option>
-                  <option value="ECOMMERCE">E-Commerce</option>
-                  <option value="FLIGHT">Flights</option>
-                  <option value="HOTEL">Hotels</option>
-                </select>
-              </div>
+                <option value="ALL">All Categories</option>
+                <option value="ECOMMERCE">E-Commerce</option>
+                <option value="FLIGHT">Flights</option>
+                <option value="HOTEL">Hotels</option>
+              </select>
             </div>
           </div>
 
@@ -724,7 +658,7 @@ export const Dashboard = () => {
                             </span>
                             <button
                               onClick={() => {
-                                setEditingItem({ id: item.id, title: item.title, target_price: item.target_price, currency: item.currency });
+                                setEditingItem({ id: item.id, title: item.title, current_price: item.current_price, target_price: item.target_price, currency: item.currency });
                                 setEditPriceInput(item.target_price.toString());
                               }}
                               className="p-1 text-slate-400 hover:text-brand-accent hover:bg-slate-200/60 rounded transition-colors"
@@ -744,26 +678,15 @@ export const Dashboard = () => {
                         <button 
                           onClick={() => handleRefreshPrice(item.id)} 
                           disabled={refreshingIds[item.id]} 
-                          className="bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50 px-2.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1"
+                          className="bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50 px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
                           title="Verify latest live price"
                         >
                           <RefreshCw size={13} className={cn("text-slate-500", refreshingIds[item.id] && "animate-spin text-brand-accent")} />
                           {refreshingIds[item.id] ? 'Checking' : 'Check'}
                         </button>
-                        <button onClick={() => handleSimulate(item.id)} disabled={simulatingIds[item.id]} className="flex-1 bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50 px-2.5 py-2 rounded-lg text-xs font-semibold transition-colors flex justify-center items-center gap-1">
+                        <button onClick={() => handleSimulate(item.id)} disabled={simulatingIds[item.id]} className="flex-1 bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50 px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex justify-center items-center gap-1.5">
                           {simulatingIds[item.id] ? <div className="w-3.5 h-3.5 border-2 border-slate-400 border-t-brand-accent rounded-full animate-spin" /> : <Zap size={14} className={isHit ? "text-slate-400" : "text-brand-accent"} />}
                           Simulate
-                        </button>
-                        <button
-                          onClick={() => handleShareDeal(item)}
-                          className="bg-slate-100 text-slate-700 hover:bg-slate-200 px-2.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center"
-                          title="Share deal"
-                        >
-                          {copiedDealId === item.id ? (
-                            <Check size={14} className="text-green-600" />
-                          ) : (
-                            <Share2 size={14} className="text-slate-600" />
-                          )}
                         </button>
                         <a href={item.target_url} target="_blank" rel="noreferrer" className="bg-brand-dark text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors flex items-center justify-center" title="View original deal">
                           <ArrowRight size={16} />
@@ -1037,7 +960,37 @@ export const Dashboard = () => {
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Target Item</p>
               <h4 className="font-medium text-slate-900 text-sm mb-4 line-clamp-2">{editingItem.title}</h4>
               <form onSubmit={handleUpdateTargetPrice}>
-                <label className="block text-sm font-medium text-slate-700 mb-2">New Target Price</label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-medium text-slate-700">New Target Price</label>
+                  <span className="text-xs text-brand-accent font-semibold flex items-center gap-1">
+                    <Percent size={12} /> Discount Presets
+                  </span>
+                </div>
+
+                {/* 1-Click Discount Presets */}
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  {[5, 10, 15, 20].map(pct => {
+                    const presetPrice = Math.max(1, Math.round(editingItem.current_price * (1 - pct / 100)));
+                    const isSelected = editPriceInput === presetPrice.toString();
+                    return (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => setEditPriceInput(presetPrice.toString())}
+                        className={cn(
+                          "py-2 px-1 text-center rounded-xl border text-xs font-semibold transition-all cursor-pointer",
+                          isSelected
+                            ? "bg-brand-accent text-white border-brand-accent shadow-xs scale-102"
+                            : "bg-white border-slate-200 text-slate-700 hover:border-brand-accent hover:bg-brand-accent/5"
+                        )}
+                      >
+                        <div className="font-bold">-{pct}%</div>
+                        <div className="text-[10px] opacity-80">₱{presetPrice.toLocaleString()}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <div className="relative mb-6">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">₱</span>
                   <input
@@ -1092,13 +1045,43 @@ export const Dashboard = () => {
                 </div>
               </div>
               <form onSubmit={confirmLockTarget}>
-                <label className="block text-sm font-medium text-slate-900 mb-2">Set your target price</label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-medium text-slate-900">Set your target price</label>
+                  <span className="text-xs text-brand-accent font-semibold flex items-center gap-1">
+                    <Percent size={12} /> Discount Presets
+                  </span>
+                </div>
+
+                {/* 1-Click Discount Presets */}
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  {[5, 10, 15, 20].map(pct => {
+                    const presetPrice = Math.max(1, Math.round(selectedItemToLock.price * (1 - pct / 100)));
+                    const isSelected = targetPriceInput === presetPrice.toString();
+                    return (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => setTargetPriceInput(presetPrice.toString())}
+                        className={cn(
+                          "py-2 px-1 text-center rounded-xl border text-xs font-semibold transition-all cursor-pointer",
+                          isSelected
+                            ? "bg-brand-accent text-white border-brand-accent shadow-xs scale-102"
+                            : "bg-white border-slate-200 text-slate-700 hover:border-brand-accent hover:bg-brand-accent/5"
+                        )}
+                      >
+                        <div className="font-bold">-{pct}%</div>
+                        <div className="text-[10px] opacity-80">₱{presetPrice.toLocaleString()}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <div className="relative mb-6">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">₱</span>
                   <input
                     type="number" required min="1" max={selectedItemToLock.price - 1}
                     value={targetPriceInput} onChange={e => setTargetPriceInput(e.target.value)}
-                    className="w-full pl-8 pr-4 py-3 rounded-xl border border-slate-300 focus:border-brand-accent focus:ring-1 focus:ring-brand-accent outline-none text-lg font-medium"
+                    className="w-full pl-8 pr-4 py-3 rounded-xl border border-slate-300 focus:border-brand-accent focus:ring-1 focus:ring-brand-accent outline-none text-lg font-medium bg-white"
                     autoFocus
                   />
                 </div>
@@ -1147,16 +1130,6 @@ export const Dashboard = () => {
             >
               <X size={16} />
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Share Feedback Toast ── */}
-      {shareToast && (
-        <div className="fixed top-6 right-6 z-50 pointer-events-auto animate-in slide-in-from-top-4 fade-in duration-300">
-          <div className="bg-slate-900 text-white rounded-xl shadow-2xl px-4 py-3 flex items-center gap-2.5 text-xs font-semibold border border-slate-800">
-            <Check size={16} className="text-green-400 shrink-0" />
-            <span>{shareToast}</span>
           </div>
         </div>
       )}
