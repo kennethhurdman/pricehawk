@@ -7,7 +7,7 @@ import { Category, ChatMessage, MockCatalogItem } from '../types';
 import {
   Search, Plus, Trash2, Crosshair, TrendingDown, ArrowRight, X,
   AlertCircle, Zap, Heart, Send, Bot, Sparkles, LayoutGrid, MessageSquare, Bird,
-  Compass, Link as LinkIcon, Filter, User, Pencil
+  Compass, Link as LinkIcon, Filter, User, Pencil, ArrowUpDown
 } from 'lucide-react';
 import { formatCurrency, cn } from '../lib/utils';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -380,6 +380,37 @@ export const Dashboard = () => {
     { id: 't4', category: 'ECOMMERCE' as Category, name: 'Apple iPad Air (M1)', price: 28990, currency: 'PHP', imageUrl: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400&q=80', sourceUrl: 'https://lazada.com.ph/ipad-air-m1', trackers: 56 },
   ];
 
+  // ── Trending Deals Filters & Sorting ──────────────────────────────────────
+  const [trendingCategoryFilter, setTrendingCategoryFilter] = useState<Category | 'ALL'>('ALL');
+  const [trendingSortBy, setTrendingSortBy] = useState<'POPULAR' | 'PRICE_ASC' | 'PRICE_DESC'>('POPULAR');
+  const [trendingPriceFilter, setTrendingPriceFilter] = useState<'ALL' | 'UNDER_15K' | '15K_TO_25K' | 'ABOVE_25K'>('ALL');
+
+  const filteredTrendingDeals = useMemo(() => {
+    let result = [...TRENDING_DEALS];
+
+    if (trendingCategoryFilter !== 'ALL') {
+      result = result.filter(d => d.category === trendingCategoryFilter);
+    }
+
+    if (trendingPriceFilter === 'UNDER_15K') {
+      result = result.filter(d => d.price < 15000);
+    } else if (trendingPriceFilter === '15K_TO_25K') {
+      result = result.filter(d => d.price >= 15000 && d.price <= 25000);
+    } else if (trendingPriceFilter === 'ABOVE_25K') {
+      result = result.filter(d => d.price > 25000);
+    }
+
+    if (trendingSortBy === 'PRICE_ASC') {
+      result.sort((a, b) => a.price - b.price);
+    } else if (trendingSortBy === 'PRICE_DESC') {
+      result.sort((a, b) => b.price - a.price);
+    } else {
+      result.sort((a, b) => b.trackers - a.trackers);
+    }
+
+    return result;
+  }, [trendingCategoryFilter, trendingSortBy, trendingPriceFilter]);
+
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto w-full relative">
       {/* ── Header ── */}
@@ -539,52 +570,115 @@ export const Dashboard = () => {
 
       {/* ── Trending Community Deals ── */}
       <div className="mt-16 animate-in fade-in duration-500">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-display font-bold text-slate-900 flex items-center gap-2">
-            <Compass className="text-brand-accent" /> Trending Community Deals
-          </h2>
-          <span className="text-xs font-semibold bg-slate-100 text-slate-500 px-2 py-1 rounded-md">
-            Live from PriceHawk
-          </span>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div>
+            <h2 className="text-xl font-display font-bold text-slate-900 flex items-center gap-2">
+              <Compass className="text-brand-accent" /> Trending Community Deals
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">Explore deals locked by other PriceHawk users</p>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Category Filter */}
+            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+              <Filter size={13} className="text-slate-400" />
+              <select
+                value={trendingCategoryFilter}
+                onChange={e => setTrendingCategoryFilter(e.target.value as any)}
+                className="bg-transparent text-slate-700 font-medium outline-none cursor-pointer"
+              >
+                <option value="ALL">All Categories</option>
+                <option value="ECOMMERCE">E-Commerce</option>
+                <option value="FLIGHT">Flights</option>
+                <option value="HOTEL">Hotels</option>
+              </select>
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+              <ArrowUpDown size={13} className="text-slate-400" />
+              <select
+                value={trendingSortBy}
+                onChange={e => setTrendingSortBy(e.target.value as any)}
+                className="bg-transparent text-slate-700 font-medium outline-none cursor-pointer"
+              >
+                <option value="POPULAR">Most Popular</option>
+                <option value="PRICE_ASC">Price: Low to High</option>
+                <option value="PRICE_DESC">Price: High to Low</option>
+              </select>
+            </div>
+          </div>
         </div>
 
-        <div className="columns-1 sm:columns-2 lg:columns-4 gap-6 space-y-6 pb-24">
-          {TRENDING_DEALS.map(deal => (
-            <div key={deal.id} className="break-inside-avoid bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-brand-accent/50 transition-all group">
-              <div className="relative">
-                <img 
-                  src={deal.imageUrl} 
-                  alt={deal.name} 
-                  className="w-full object-cover h-40 transition-transform duration-700 group-hover:scale-105" 
-                />
-                <div className="absolute top-3 left-3 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-widest shadow-sm">
-                  {deal.category}
-                </div>
-                <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm text-brand-dark text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1">
-                  <User size={10} className="text-brand-accent" /> {deal.trackers} tracking
-                </div>
-              </div>
-              <div className="p-4">
-                <h3 className="font-bold text-slate-900 mb-1 leading-snug line-clamp-1" title={deal.name}>{deal.name}</h3>
-                <p className="text-brand-accent font-black text-lg mb-4">{formatCurrency(deal.price, deal.currency)}</p>
-                <button 
-                  onClick={() => openLockModal({
-                    id: deal.id,
-                    category: deal.category,
-                    name: deal.name,
-                    price: deal.price,
-                    currency: deal.currency,
-                    sourceUrl: deal.sourceUrl,
-                    imageUrl: deal.imageUrl
-                  })}
-                  className="w-full bg-slate-100 text-slate-800 font-bold py-2 rounded-xl hover:bg-brand-accent hover:text-white transition-all flex items-center justify-center gap-2 text-sm"
-                >
-                  <Crosshair size={14} /> Track This Too
-                </button>
-              </div>
-            </div>
+        {/* Budget Chips */}
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          <span className="text-xs font-semibold text-slate-400 mr-1">Budget:</span>
+          {[
+            { id: 'ALL', label: 'All Budgets' },
+            { id: 'UNDER_15K', label: 'Under ₱15,000' },
+            { id: '15K_TO_25K', label: '₱15k – ₱25k' },
+            { id: 'ABOVE_25K', label: 'Above ₱25,000' },
+          ].map(chip => (
+            <button
+              key={chip.id}
+              onClick={() => setTrendingPriceFilter(chip.id as any)}
+              className={cn(
+                "px-3 py-1 rounded-full text-xs font-medium transition-colors",
+                trendingPriceFilter === chip.id
+                  ? "bg-brand-accent text-white shadow-sm"
+                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+              )}
+            >
+              {chip.label}
+            </button>
           ))}
         </div>
+
+        {filteredTrendingDeals.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 border-dashed mb-24">
+            <Compass size={32} className="text-slate-300 mx-auto mb-2" />
+            <h4 className="font-semibold text-slate-700 text-sm">No trending deals found</h4>
+            <p className="text-xs text-slate-400 mt-1">Try adjusting your category or budget filters.</p>
+          </div>
+        ) : (
+          <div className="columns-1 sm:columns-2 lg:columns-4 gap-6 space-y-6 pb-24">
+            {filteredTrendingDeals.map(deal => (
+              <div key={deal.id} className="break-inside-avoid bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-brand-accent/50 transition-all group">
+                <div className="relative">
+                  <img 
+                    src={deal.imageUrl} 
+                    alt={deal.name} 
+                    className="w-full object-cover h-40 transition-transform duration-700 group-hover:scale-105" 
+                  />
+                  <div className="absolute top-3 left-3 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-widest shadow-sm">
+                    {deal.category}
+                  </div>
+                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm text-brand-dark text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1">
+                    <User size={10} className="text-brand-accent" /> {deal.trackers} tracking
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-bold text-slate-900 mb-1 leading-snug line-clamp-1" title={deal.name}>{deal.name}</h3>
+                  <p className="text-brand-accent font-black text-lg mb-4">{formatCurrency(deal.price, deal.currency)}</p>
+                  <button 
+                    onClick={() => openLockModal({
+                      id: deal.id,
+                      category: deal.category,
+                      name: deal.name,
+                      price: deal.price,
+                      currency: deal.currency,
+                      sourceUrl: deal.sourceUrl,
+                      imageUrl: deal.imageUrl
+                    })}
+                    className="w-full bg-slate-100 text-slate-800 font-bold py-2 rounded-xl hover:bg-brand-accent hover:text-white transition-all flex items-center justify-center gap-2 text-sm"
+                  >
+                    <Crosshair size={14} /> Track This Too
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Chat Modal ── */}
