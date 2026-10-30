@@ -126,10 +126,11 @@ function useHawkBot(catalog: MockCatalogItem[]) {
   }, [messages, catalog, isLoading]);
 
   const reset = useCallback(() => {
+    localStorage.removeItem('hawkbot_history');
     setMessages([{
       id: 'welcome',
       role: 'assistant',
-      content: "Hey! I'm **HawkBot** 🦅 — your personal deal-finder. Tell me what you're looking for!\n\nTry: *\"cheap flights to Cebu\"* or *\"beach resorts under ₱15,000\"*",
+      content: "Hey! I'm **HawkBot** 🤖🦅 — your personal deal-finder. Tell me what you're looking for!\n\nTry: *\"cheap flights to Cebu\"* or *\"beach resorts under ₱15,000\"*",
       timestamp: new Date(),
     }]);
     setMatchedItems([]);
@@ -865,6 +866,29 @@ export const Dashboard = () => {
               )}
 
               <div className="border-t border-slate-200 bg-white p-3 shrink-0">
+                {/* Quick Suggestion Chips */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
+                    <Sparkles size={11} className="text-brand-accent" /> Try:
+                  </span>
+                  {[
+                    'Cheap flights to Cebu',
+                    'Beach resorts under ₱15,000',
+                    'Sony WH-1000XM5 headphones',
+                    'Manila to Tokyo roundtrip'
+                  ].map((prompt, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      disabled={hawkBot.isLoading}
+                      onClick={() => hawkBot.send(prompt)}
+                      className="text-xs bg-slate-100 hover:bg-brand-accent/10 hover:text-brand-accent text-slate-600 rounded-lg px-2.5 py-1 whitespace-nowrap transition-colors shrink-0 disabled:opacity-50"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+
                 <form onSubmit={e => { e.preventDefault(); hawkBot.send(hawkBot.input); }} className="flex gap-2">
                   <div className="flex-1 relative">
                     <MessageSquare size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
