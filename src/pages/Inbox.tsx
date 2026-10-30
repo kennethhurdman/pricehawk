@@ -5,12 +5,95 @@
  * The old MockEmail type is replaced by AlertRow from database.types.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuthContext }  from '../App';
 import { useAlerts }       from '../hooks/useAlerts';
-import { Mail, MailOpen, AlertCircle, TrendingDown, Inbox as InboxIcon, Search, CheckCheck, Trash2 } from 'lucide-react';
+import { Mail, MailOpen, AlertCircle, TrendingDown, Inbox as InboxIcon, Search, CheckCheck, Trash2, ArrowRight } from 'lucide-react';
 import { formatDate, cn }  from '../lib/utils';
 import type { AlertRow }   from '../lib/database.types';
+
+function formatAlertHtml(htmlBody: string, alert: AlertRow): string {
+  if (!htmlBody) return '';
+  if (htmlBody.includes('linear-gradient') || htmlBody.includes('PriceHawk</span>')) {
+    return htmlBody;
+  }
+
+  const linkMatch = htmlBody.match(/href="([^"]+)"/);
+  const dealUrl = linkMatch ? linkMatch[1] : '#';
+  
+  const textOnly = htmlBody.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const prices = textOnly.match(/₱[\d,]+/g) || [];
+  const oldPrice = prices[0] || '₱0';
+  const newPrice = prices[1] || prices[0] || '₱0';
+
+  const titleMatch = alert.subject.replace(/^[🎯\s]+Target hit\s*—\s*/i, '').replace(/\s*just dropped.*$/i, '').trim();
+
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
+      <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 24px 28px; text-align: center; border-bottom: 3px solid #f97316;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+          <span style="font-size: 26px;">🦅</span>
+          <span style="color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">PriceHawk</span>
+        </div>
+        <div style="color: #f97316; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-top: 6px;">
+          Target Price Reached!
+        </div>
+      </div>
+
+      <div style="padding: 28px;">
+        <div style="display: inline-block; background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 4px 10px; border-radius: 9999px; margin-bottom: 12px;">
+          ${alert.type === 'DEAL_ALERT' ? 'PRICE DROP DETECTED' : 'SYSTEM ALERT'}
+        </div>
+
+        <h2 style="color: #0f172a; font-size: 20px; font-weight: 700; line-height: 1.4; margin: 0 0 20px 0;">
+          ${titleMatch || alert.subject}
+        </h2>
+
+        ${prices.length >= 1 ? `
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; margin-bottom: 24px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="width: 50%; vertical-align: middle;">
+                  <div style="color: #64748b; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Previous Price</div>
+                  <div style="color: #94a3b8; font-size: 18px; font-weight: 600; text-decoration: line-through;">
+                    ${oldPrice}
+                  </div>
+                </td>
+                <td style="width: 50%; vertical-align: middle; text-align: right;">
+                  <div style="color: #16a34a; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">New Target Hit</div>
+                  <div style="color: #16a34a; font-size: 28px; font-weight: 800; line-height: 1;">
+                    ${newPrice}
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </div>
+        ` : `
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 20px; color: #334155; font-size: 14px; line-height: 1.6;">
+            ${htmlBody}
+          </div>
+        `}
+
+        <div style="text-align: center; margin-bottom: 20px;">
+          <a href="${dealUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; width: 100%; box-sizing: border-box; background: #f97316; color: #ffffff; font-size: 15px; font-weight: 700; text-align: center; text-decoration: none; padding: 14px 24px; border-radius: 12px; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);">
+            View Deal &amp; Claim Offer &rarr;
+          </a>
+        </div>
+
+        <p style="color: #64748b; font-size: 12px; line-height: 1.5; text-align: center; margin: 0;">
+          Prices online change rapidly. We recommend securing this price immediately.
+        </p>
+      </div>
+
+      <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 24px; text-align: center;">
+        <p style="color: #94a3b8; font-size: 11px; margin: 0;">
+          PriceHawk Automated Deal Protection • Real-time Monitoring
+        </p>
+      </div>
+    </div>
+  `;
+}
 
 export const Inbox = () => {
   const { user }                                               = useAuthContext();
@@ -18,6 +101,20 @@ export const Inbox = () => {
   const [selectedAlert, setSelectedAlert]                      = useState<AlertRow | null>(null);
   const [searchQuery, setSearchQuery]                          = useState('');
   const [statusFilter, setStatusFilter]                        = useState<'ALL' | 'UNREAD' | 'READ'>('ALL');
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const targetId = params.get('alertId');
+    if (targetId && alerts.length > 0) {
+      const found = alerts.find(a => a.id === targetId);
+      if (found) {
+        handleSelect(found);
+      }
+    } else if (!selectedAlert && alerts.length > 0 && typeof window !== 'undefined' && window.innerWidth >= 768) {
+      handleSelect(alerts[0]);
+    }
+  }, [location.search, alerts]);
 
   const filteredAlerts = alerts.filter(a => {
     const matchesSearch = a.subject.toLowerCase().includes(searchQuery.toLowerCase());
@@ -189,11 +286,12 @@ export const Inbox = () => {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 md:p-10">
-              <div
-                className="bg-white rounded-xl shadow-sm p-8 max-w-3xl mx-auto border border-slate-100 prose prose-slate"
-                dangerouslySetInnerHTML={{ __html: selectedAlert.html_body }}
-              />
+            <div className="flex-1 overflow-y-auto p-4 md:p-8 flex justify-center bg-slate-100/70">
+              <div className="w-full max-w-2xl py-4">
+                <div
+                  dangerouslySetInnerHTML={{ __html: formatAlertHtml(selectedAlert.html_body, selectedAlert) }}
+                />
+              </div>
             </div>
           </>
         )}

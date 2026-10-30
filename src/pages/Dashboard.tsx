@@ -218,8 +218,80 @@ export const Dashboard = () => {
     const oldPrice   = item.current_price;
     await updateCurrentPrice(itemId, newPrice);
     if (newPrice <= item.target_price && (profile.tier === 'PREMIUM' || profile.email_tokens > 0)) {
+      const savings = Math.max(0, oldPrice - newPrice);
+      const percent = oldPrice > 0 ? Math.round((savings / oldPrice) * 100) : 0;
       const subject = `🎯 Target hit — ${item.title} just dropped to ₱${Math.round(newPrice).toLocaleString()}!`;
-      const htmlBody = `<p>${item.title} dropped from ₱${Math.round(oldPrice).toLocaleString()} to ₱${Math.round(newPrice).toLocaleString()}</p><p><a href="${item.target_url}">View Deal Here</a></p>`;
+      const htmlBody = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
+          <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 24px 28px; text-align: center; border-bottom: 3px solid #f97316;">
+            <div style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+              <span style="font-size: 26px;">🦅</span>
+              <span style="color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">PriceHawk</span>
+            </div>
+            <div style="color: #f97316; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-top: 6px;">
+              Target Price Reached!
+            </div>
+          </div>
+
+          <div style="padding: 28px;">
+            ${item.image_url ? `
+              <div style="width: 100%; height: 200px; border-radius: 12px; overflow: hidden; margin-bottom: 20px; background: #f1f5f9;">
+                <img src="${item.image_url}" alt="${item.title}" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+              </div>
+            ` : ''}
+
+            <div style="display: inline-block; background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 4px 10px; border-radius: 9999px; margin-bottom: 12px;">
+              ${item.category || 'DEAL ALERT'}
+            </div>
+
+            <h2 style="color: #0f172a; font-size: 20px; font-weight: 700; line-height: 1.4; margin: 0 0 20px 0;">
+              ${item.title}
+            </h2>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; margin-bottom: 24px;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="width: 50%; vertical-align: middle;">
+                    <div style="color: #64748b; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Previous Price</div>
+                    <div style="color: #94a3b8; font-size: 18px; font-weight: 600; text-decoration: line-through;">
+                      ₱${Math.round(oldPrice).toLocaleString()}
+                    </div>
+                  </td>
+                  <td style="width: 50%; vertical-align: middle; text-align: right;">
+                    <div style="color: #16a34a; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">New Target Hit</div>
+                    <div style="color: #16a34a; font-size: 28px; font-weight: 800; line-height: 1;">
+                      ₱${Math.round(newPrice).toLocaleString()}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+              ${savings > 0 ? `
+                <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #cbd5e1; text-align: center;">
+                  <span style="display: inline-block; background: #dcfce7; color: #15803d; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 9999px;">
+                    ⚡ Price dropped by ₱${Math.round(savings).toLocaleString()} (${percent}% off)
+                  </span>
+                </div>
+              ` : ''}
+            </div>
+
+            <div style="text-align: center; margin-bottom: 20px;">
+              <a href="${item.target_url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; width: 100%; box-sizing: border-box; background: #f97316; color: #ffffff; font-size: 15px; font-weight: 700; text-align: center; text-decoration: none; padding: 14px 24px; border-radius: 12px; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);">
+                View Deal &amp; Claim Offer &rarr;
+              </a>
+            </div>
+
+            <p style="color: #64748b; font-size: 12px; line-height: 1.5; text-align: center; margin: 0;">
+              Prices online change rapidly. We recommend securing this price immediately.
+            </p>
+          </div>
+
+          <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 24px; text-align: center;">
+            <p style="color: #94a3b8; font-size: 11px; margin: 0;">
+              PriceHawk Automated Deal Protection • Real-time Monitoring
+            </p>
+          </div>
+        </div>
+      `;
 
       // Desktop Push Notification
       if ('Notification' in window && Notification.permission === 'granted') {
@@ -1013,21 +1085,33 @@ export const Dashboard = () => {
       {/* ── Toast Notification ── */}
       {toastVisible && latestEmail && (
         <div className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-50 pointer-events-auto animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 p-4 w-[calc(100vw-32px)] sm:w-80 flex items-start gap-3">
+          <div 
+            onClick={() => { 
+              markEmailRead(latestEmail.id); 
+              setToastVisible(false); 
+              navigate(`/inbox?alertId=${latestEmail.id}`); 
+            }}
+            className="bg-white rounded-xl shadow-xl border border-slate-200 p-4 w-[calc(100vw-32px)] sm:w-80 flex items-start gap-3 cursor-pointer hover:border-brand-accent/50 hover:shadow-2xl transition-all"
+          >
             <div className={cn("p-2 rounded-full shrink-0", latestEmail.type === 'DEAL_ALERT' ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600")}>
               {latestEmail.type === 'DEAL_ALERT' ? <TrendingDown size={20} /> : <AlertCircle size={20} />}
             </div>
             <div className="flex-1 min-w-0">
               <h4 className="text-sm font-bold text-slate-900 mb-1">{latestEmail.type === 'DEAL_ALERT' ? 'Price drop detected!' : 'Alert Failed'}</h4>
               <p className="text-xs text-slate-600 mb-3 line-clamp-2">{latestEmail.subject}</p>
-              <button
-                onClick={() => { markEmailRead(latestEmail.id); setToastVisible(false); navigate('/email-demo'); }}
-                className="text-xs font-semibold text-brand-accent hover:text-brand-accent-hover flex items-center gap-1"
-              >
-                View alert email <ArrowRight size={12} />
-              </button>
+              <span className="text-xs font-semibold text-brand-accent hover:text-brand-accent-hover flex items-center gap-1">
+                View in alerts inbox <ArrowRight size={12} />
+              </span>
             </div>
-            <button onClick={() => setToastVisible(false)} className="text-slate-300 hover:text-slate-500 shrink-0"><X size={16} /></button>
+            <button 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                setToastVisible(false); 
+              }} 
+              className="text-slate-300 hover:text-slate-500 shrink-0 p-1"
+            >
+              <X size={16} />
+            </button>
           </div>
         </div>
       )}
