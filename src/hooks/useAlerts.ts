@@ -46,6 +46,19 @@ export function useAlerts(userId: string | null) {
     await supabase.from('alerts').update({ read: true }).eq('id', id);
   };
 
+  // ── Mark all alerts as read ───────────────────────────────────────────────
+  const markAllAsRead = async () => {
+    if (!userId) return;
+    setAlerts(prev => prev.map(a => ({ ...a, read: true })));
+    await supabase.from('alerts').update({ read: true }).eq('user_id', userId);
+  };
+
+  // ── Delete one alert ──────────────────────────────────────────────────────
+  const deleteAlert = async (id: string) => {
+    setAlerts(prev => prev.filter(a => a.id !== id));
+    await supabase.from('alerts').delete().eq('id', id);
+  };
+
   const unreadCount = alerts.filter(a => !a.read).length;
 
   return {
@@ -54,6 +67,8 @@ export function useAlerts(userId: string | null) {
     setLatestTriggeredAlertId,
     addAlert,
     markRead,
+    markAllAsRead,
+    deleteAlert,
     unreadCount,
   };
 }

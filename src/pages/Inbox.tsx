@@ -8,23 +8,36 @@
 import { useState } from 'react';
 import { useAuthContext }  from '../App';
 import { useAlerts }       from '../hooks/useAlerts';
-import { Mail, MailOpen, AlertCircle, TrendingDown, Inbox as InboxIcon, Search } from 'lucide-react';
+import { Mail, MailOpen, AlertCircle, TrendingDown, Inbox as InboxIcon, Search, CheckCheck, Trash2 } from 'lucide-react';
 import { formatDate, cn }  from '../lib/utils';
 import type { AlertRow }   from '../lib/database.types';
 
 export const Inbox = () => {
-  const { user }                        = useAuthContext();
-  const { alerts, markRead }            = useAlerts(user?.id ?? null);
-  const [selectedAlert, setSelectedAlert] = useState<AlertRow | null>(null);
-  const [searchQuery, setSearchQuery]   = useState('');
+  const { user }                                               = useAuthContext();
+  const { alerts, markRead, markAllAsRead, deleteAlert, unreadCount } = useAlerts(user?.id ?? null);
+  const [selectedAlert, setSelectedAlert]                      = useState<AlertRow | null>(null);
+  const [searchQuery, setSearchQuery]                          = useState('');
+  const [statusFilter, setStatusFilter]                        = useState<'ALL' | 'UNREAD' | 'READ'>('ALL');
 
-  const filteredAlerts = alerts.filter(a =>
-    a.subject.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredAlerts = alerts.filter(a => {
+    const matchesSearch = a.subject.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+    if (statusFilter === 'UNREAD') return !a.read;
+    if (statusFilter === 'READ') return a.read;
+    return true;
+  });
 
   const handleSelect = (alert: AlertRow) => {
     setSelectedAlert(alert);
     if (!alert.read) markRead(alert.id);
+  };
+
+  const handleDelete = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    await deleteAlert(id);
+    if (selectedAlert?.id === id) {
+      setSelectedAlert(null);
+    }
   };
 
   return (
@@ -35,9 +48,20 @@ export const Inbox = () => {
         selectedAlert ? 'hidden md:flex' : 'flex'
       )}>
         <div className="p-4 border-b border-slate-200">
-          <h1 className="text-xl font-display font-bold text-slate-900 mb-4 flex items-center gap-2">
-            <InboxIcon size={20} className="text-brand-accent" /> Alerts Inbox
-          </h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-xl font-display font-bold text-slate-900 flex items-center gap-2">
+              <InboxIcon size={20} className="text-brand-accent" /> Alerts Inbox
+            </h1>
+            {unreadCount > 0 && (
+              <button
+                onClick={() => markAllAsRead()}
+                className="text-xs text-brand-accent hover:text-brand-accent-hover font-semibold flex items-center gap-1 transition-colors"
+                title="Mark all alerts as read"
+              >
+                <CheckCheck size={14} /> Mark all read
+              </button>
+            )}
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
@@ -47,6 +71,26 @@ export const Inbox = () => {
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 rounded-lg bg-slate-100 border-transparent focus:bg-white focus:border-slate-300 focus:ring-2 focus:ring-brand-accent/20 outline-none text-sm transition-all"
             />
+          </div>
+          <div className="flex gap-1.5 mt-3 pt-3 border-t border-slate-100">
+            <button
+              onClick={() => setStatusFilter('ALL')}
+              className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-colors", statusFilter === 'ALL' ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}
+            >
+              All ({alerts.length})
+            </button>
+            <button
+              onClick={() => setStatusFilter('UNREAD')}
+              className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-colors", statusFilter === 'UNREAD' ? "bg-brand-accent text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}
+            >
+              Unread ({unreadCount})
+            </button>
+            <button
+              onClick={() => setStatusFilter('READ')}
+              className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-colors", statusFilter === 'READ' ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}
+            >
+              Read ({alerts.length - unreadCount})
+            </button>
           </div>
         </div>
 
@@ -64,7 +108,7 @@ export const Inbox = () => {
                   key={alert.id}
                   onClick={() => handleSelect(alert)}
                   className={cn(
-                    'p-4 cursor-pointer hover:bg-slate-50 transition-colors flex gap-3',
+                    'p-4 cursor-pointer hover:bg-slate-50 transition-colors flex gap-3 group relative',
                     selectedAlert?.id === alert.id ? 'bg-brand-accent/5' : '',
                     !alert.read ? 'bg-white' : 'opacity-75'
                   )}
@@ -88,7 +132,16 @@ export const Inbox = () => {
                       {alert.subject}
                     </p>
                   </div>
-                  {!alert.read && <div className="w-2 h-2 rounded-full bg-brand-accent mt-1.5 shrink-0" />}
+                  <div className="flex flex-col items-end justify-between shrink-0">
+                    {!alert.read ? <div className="w-2 h-2 rounded-full bg-brand-accent mt-1.5" /> : <div className="w-2 h-2" />}
+                    <button
+                      onClick={(e) => handleDelete(alert.id, e)}
+                      className="p-1 text-slate-400 hover:text-red-500 rounded transition-opacity"
+                      title="Delete alert"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -123,7 +176,16 @@ export const Inbox = () => {
                     <p className="text-xs text-slate-500">alerts@pricehawk.demo</p>
                   </div>
                 </div>
-                <div className="text-sm text-slate-500">{formatDate(selectedAlert.sent_at)}</div>
+                <div className="flex items-center gap-3">
+                  <div className="text-sm text-slate-500">{formatDate(selectedAlert.sent_at)}</div>
+                  <button
+                    onClick={() => handleDelete(selectedAlert.id)}
+                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Delete alert"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             </div>
 
