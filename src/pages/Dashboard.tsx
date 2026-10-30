@@ -7,7 +7,7 @@ import { Category, ChatMessage, MockCatalogItem } from '../types';
 import {
   Search, Plus, Trash2, Crosshair, TrendingDown, ArrowRight, X,
   AlertCircle, Zap, Heart, Send, Bot, Sparkles, LayoutGrid, MessageSquare, Bird,
-  Compass, Link as LinkIcon, Filter, User, Pencil, ArrowUpDown
+  Compass, Link as LinkIcon, Filter, User, Pencil, ArrowUpDown, Download
 } from 'lucide-react';
 import { formatCurrency, cn } from '../lib/utils';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -373,6 +373,37 @@ export const Dashboard = () => {
     return filtered.sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0));
   }, [trackedItems, targetsFilter]);
 
+  // ── Export Watchlist as CSV ─────────────────────────────────────────────
+  const handleExportCSV = () => {
+    if (trackedItems.length === 0) {
+      alert('No tracked items to export.');
+      return;
+    }
+
+    const headers = ['Title', 'Category', 'Current Price', 'Target Price', 'Currency', 'Is Favorite', 'Target URL', 'Tracked Date'];
+    const rows = trackedItems.map(item => [
+      `"${(item.title || '').replace(/"/g, '""')}"`,
+      `"${item.category || ''}"`,
+      item.current_price,
+      item.target_price,
+      `"${item.currency || 'PHP'}"`,
+      item.is_favorite ? 'Yes' : 'No',
+      `"${(item.target_url || '').replace(/"/g, '""')}"`,
+      `"${item.created_at || ''}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `pricehawk-watchlist-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const TRENDING_DEALS = [
     { id: 't1', category: 'ECOMMERCE' as Category, name: 'Sony WH-1000XM5', price: 16999, currency: 'PHP', imageUrl: 'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=400&q=80', sourceUrl: 'https://shopee.ph/sony-wh-1000xm5', trackers: 42 },
     { id: 't2', category: 'FLIGHT' as Category, name: 'Manila to Tokyo (RT)', price: 12500, currency: 'PHP', imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&q=80', sourceUrl: 'https://www.google.com/flights?q=mnl+to+nrt', trackers: 89 },
@@ -466,20 +497,31 @@ export const Dashboard = () => {
             </div>
           </div>
 
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6">
             <h2 className="text-xl font-display font-bold text-slate-900">Tracked Targets</h2>
             <div className="flex items-center gap-2">
-              <Filter size={16} className="text-slate-400" />
-              <select 
-                value={targetsFilter} 
-                onChange={(e) => setTargetsFilter(e.target.value as any)}
-                className="bg-white border border-slate-200 rounded-lg text-sm px-3 py-1.5 outline-none focus:border-brand-accent"
+              <button
+                onClick={handleExportCSV}
+                disabled={trackedItems.length === 0}
+                className="flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 text-slate-700 rounded-lg text-xs font-semibold px-3 py-1.5 transition-colors shadow-2xs"
+                title="Export tracked items to CSV"
               >
-                <option value="ALL">All Categories</option>
-                <option value="ECOMMERCE">E-Commerce</option>
-                <option value="FLIGHT">Flights</option>
-                <option value="HOTEL">Hotels</option>
-              </select>
+                <Download size={14} className="text-brand-accent" />
+                <span>Export CSV</span>
+              </button>
+              <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+                <Filter size={13} className="text-slate-400" />
+                <select 
+                  value={targetsFilter} 
+                  onChange={(e) => setTargetsFilter(e.target.value as any)}
+                  className="bg-transparent text-slate-700 font-medium outline-none cursor-pointer"
+                >
+                  <option value="ALL">All Categories</option>
+                  <option value="ECOMMERCE">E-Commerce</option>
+                  <option value="FLIGHT">Flights</option>
+                  <option value="HOTEL">Hotels</option>
+                </select>
+              </div>
             </div>
           </div>
 
